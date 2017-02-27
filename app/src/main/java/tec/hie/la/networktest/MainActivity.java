@@ -1,16 +1,19 @@
 package tec.hie.la.networktest;
 
 import android.content.Context;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.apache.commons.lang3.CharEncoding;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.IOException;
@@ -38,10 +41,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 hideKeyboard();
+                resetWebView();
                 sendRequest();
                 render();
             }
         });
+    }
+
+    private void resetWebView() {
+        WebView webView = ((WebView) findViewById(webview));
+        webView.loadUrl("about:blank");
     }
 
     private void sendRequest() {
@@ -99,7 +108,6 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
-
     }
 
     private void render() {
@@ -108,9 +116,15 @@ public class MainActivity extends AppCompatActivity {
         WebView webView = ((WebView) findViewById(webview));
         webView.getSettings().setJavaScriptEnabled(true);
         webView.setWebViewClient(new WebViewClient() {
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 view.loadUrl(url);
                 return false;
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, final SslErrorHandler handler, SslError error) {
+                view.loadData(error.toString(), "text/html", CharEncoding.UTF_8);
             }
         });
         webView.loadUrl(url);
