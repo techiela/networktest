@@ -1,8 +1,13 @@
 package tec.hie.la.networktest;
+
+import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -15,6 +20,8 @@ import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+
+import static tec.hie.la.networktest.R.id.webview;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -30,7 +37,9 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.send).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                hideKeyboard();
                 sendRequest();
+                render();
             }
         });
     }
@@ -38,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
     private void sendRequest() {
 
         final View progressbar = findViewById(R.id.progress);
+        final View result = findViewById(R.id.result);
+        String url = ((EditText) findViewById(R.id.url)).getText().toString();
         progressbar.setVisibility(View.VISIBLE);
 
         saveUrl();
@@ -48,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
                 .followSslRedirects(false)
                 .build();
         Request request = new Request.Builder()
-                .url(((EditText) findViewById(R.id.url)).getText().toString())
+                .url(url)
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
@@ -60,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         progressbar.setVisibility(View.INVISIBLE);
+                        result.setVisibility(View.VISIBLE);
+
                         StringBuilder builder = new StringBuilder();
                         builder.append(String.format("Overview:\n%s\n\n", e.toString()));
                         builder.append(String.format("Stacktrace:\n%s", ExceptionUtils.getStackTrace(e.fillInStackTrace())));
@@ -75,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         progressbar.setVisibility(View.INVISIBLE);
+                        result.setVisibility(View.VISIBLE);
+
                         StringBuilder builder = new StringBuilder();
                         builder.append(String.format("Status: %d\n", response.code()))
                                 .append(response.headers().toString())
@@ -84,6 +99,21 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+
+    }
+
+    private void render() {
+
+        String url = ((EditText) findViewById(R.id.url)).getText().toString();
+        WebView webView = ((WebView) findViewById(webview));
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.setWebViewClient(new WebViewClient() {
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                view.loadUrl(url);
+                return false;
+            }
+        });
+        webView.loadUrl(url);
     }
 
     private void initUrl() {
@@ -94,5 +124,13 @@ public class MainActivity extends AppCompatActivity {
     private void saveUrl() {
         String url = ((EditText) findViewById(R.id.url)).getText().toString();
         getApplicationContext().getSharedPreferences("prefs", MODE_PRIVATE).edit().putString("url", url).commit();
+    }
+
+    private void hideKeyboard() {
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
     }
 }
