@@ -28,6 +28,8 @@ import static tec.hie.la.networktest.R.id.webview;
 
 public class MainActivity extends AppCompatActivity {
 
+    private final String PREF_NAME = "prefs";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -36,21 +38,55 @@ public class MainActivity extends AppCompatActivity {
         setListener();
     }
 
+    private void initUrl() {
+        String url = getApplicationContext().getSharedPreferences(PREF_NAME, MODE_PRIVATE).getString("url", "http://www.rakuten.co.jp/");
+        ((EditText) findViewById(R.id.url)).setText(url);
+    }
+
     private void setListener() {
         findViewById(R.id.send).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 hideKeyboard();
-                resetWebView();
+                clearWebView();
+                renderWebView();
                 sendRequest();
-                render();
             }
         });
     }
 
-    private void resetWebView() {
+    private void hideKeyboard() {
+        View view = this.getCurrentFocus();
+        if (view == null) {
+            return;
+        }
+        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
+    private void clearWebView() {
         WebView webView = ((WebView) findViewById(webview));
         webView.loadUrl("about:blank");
+    }
+
+    private void renderWebView() {
+
+        String url = ((EditText) findViewById(R.id.url)).getText().toString();
+        WebView webView = ((WebView) findViewById(webview));
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                view.loadUrl(url);
+                return false;
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, final SslErrorHandler handler, SslError error) {
+                view.loadData(error.toString(), "text/html", CharEncoding.UTF_8);
+            }
+        });
+        webView.loadUrl(url);
     }
 
     private void sendRequest() {
@@ -83,8 +119,8 @@ public class MainActivity extends AppCompatActivity {
                         result.setVisibility(View.VISIBLE);
 
                         StringBuilder builder = new StringBuilder();
-                        builder.append(String.format("Overview:\n%s\n\n", e.toString()));
-                        builder.append(String.format("Stacktrace:\n%s", ExceptionUtils.getStackTrace(e.fillInStackTrace())));
+                        builder.append(String.format("Overview:\n%s\n\n", e.toString()))
+                                .append(String.format("Stacktrace:\n%s", ExceptionUtils.getStackTrace(e.fillInStackTrace())));
                         ((TextView) findViewById(R.id.response)).setText(builder.toString());
                     }
                 });
@@ -92,7 +128,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(Call call, final Response response) throws IOException {
-                final String body = response.body().string();
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -101,8 +136,7 @@ public class MainActivity extends AppCompatActivity {
 
                         StringBuilder builder = new StringBuilder();
                         builder.append(String.format("Status: %d\n", response.code()))
-                                .append(response.headers().toString())
-                        ;
+                                .append(response.headers().toString());
                         ((TextView) findViewById(R.id.response)).setText(builder.toString());
                     }
                 });
@@ -110,41 +144,8 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void render() {
-
-        String url = ((EditText) findViewById(R.id.url)).getText().toString();
-        WebView webView = ((WebView) findViewById(webview));
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
-                return false;
-            }
-
-            @Override
-            public void onReceivedSslError(WebView view, final SslErrorHandler handler, SslError error) {
-                view.loadData(error.toString(), "text/html", CharEncoding.UTF_8);
-            }
-        });
-        webView.loadUrl(url);
-    }
-
-    private void initUrl() {
-        String url = getApplicationContext().getSharedPreferences("prefs", MODE_PRIVATE).getString("url", "http://www.rakuten.co.jp/");
-        ((EditText) findViewById(R.id.url)).setText(url);
-    }
-
     private void saveUrl() {
         String url = ((EditText) findViewById(R.id.url)).getText().toString();
-        getApplicationContext().getSharedPreferences("prefs", MODE_PRIVATE).edit().putString("url", url).commit();
-    }
-
-    private void hideKeyboard() {
-        View view = this.getCurrentFocus();
-        if (view != null) {
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
+        getApplicationContext().getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putString("url", url).commit();
     }
 }
